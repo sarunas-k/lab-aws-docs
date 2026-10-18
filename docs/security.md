@@ -24,13 +24,13 @@ No AWS keys are stored in GitHub. Roles come from `lab-bootstrap` and are assume
 | `lab-github-platform-plan` | dev, test, prod | `lab-infra-platform:pull_request` | ReadOnlyAccess, state read and lock under `envs/<env>/` |
 | `lab-github-cost-guard` | dev, test, prod | `lab-infra-platform:ref:refs/heads/main` | ReadOnlyAccess |
 | `lab-github-platform-apply` | dev, test, prod | `lab-infra-platform:environment:<env>` | AdministratorAccess, 2 h session |
-| `lab-github-ecr-push` | dev, test, prod | `lab-backend`, `lab-web`, `lab-cluster`: `environment:<env>` | ECR push to `lab-*` |
+| `lab-github-ecr-push` | dev, test, prod | `lab-backend`, `lab-web`: `environment:<env>` | ECR push to `lab-*` |
 | `lab-github-assets-sync` | dev, test, prod | `lab-web:environment:<env>` | Read, write, delete on `lab-<env>-assets/images/*` |
 
 State isolation: the shared bucket policy admits each account only under `envs/<env>/`, for the `lab-github-platform-*` roles and the operator's IAM Identity Center roles (`AWSReservedSSO_*`) in the organization.
 
-Repository controls (`lab-github`):
-- `protect-main`: pull request, 1 approval, code owner review, resolved threads, linear history, strict checks, no force-push. No admin bypass on `lab-bootstrap`, `lab-infra-org`, `lab-github`. `v*` tags are immutable.
+Repository controls (configured by hand, see [repository settings](repository-settings.md)):
+- `protect-main`: pull request, 1 approval, code owner review, resolved threads, linear history, strict checks, no force-push. No admin bypass on `lab-bootstrap`, `lab-infra-org`. `v*` tags are immutable.
 - Environments accept deployments from `main` and `v*` only. Secret scanning with push protection and Dependabot alerts are on.
 
 ## Secrets

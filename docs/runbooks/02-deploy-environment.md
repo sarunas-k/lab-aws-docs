@@ -8,14 +8,14 @@ Needs: runbook 01 done, Terraform 1.10 or later, `kubectl`, `helm`, admin creden
 2. In `lab-infra-platform/envs/<env>/base`: `cp terraform.tfvars.example terraform.tfvars` and set `alert_emails`.
 3. Create ECR, buckets and SNS topics: `terraform init -backend-config="bucket=lab-tfstate-platform-<shared-id>" && terraform apply`
 4. Confirm the SNS subscription emails in `eu-central-1` and `us-east-1`. Alarms are silent until you do.
-5. Build the first images: merge a change to `main` in `lab-backend`, `lab-web`, `lab-cluster`, then merge the `lab-gitops` pull requests they open ([03](03-release-and-promote.md)). For test and prod, use a tag.
+5. Build the first images: merge a change to `main` in `lab-backend` and `lab-web`, then merge the `lab-gitops` pull requests they open ([03](03-release-and-promote.md)). For test and prod, use a tag.
 6. Set the cluster inputs. Locally: in `envs/<env>/cluster`, `cp terraform.tfvars.example terraform.tfvars` and set `kubernetes_version`, `api_allowed_cidrs` (your IP as `/32`, needed for `kubectl`), `admin_role_arns`. For CI: set the repository variables `KUBERNETES_VERSION`, `API_ALLOWED_CIDRS`, `ADMIN_ROLE_ARNS`.
 7. Create VPC, EKS, Valkey and Pod Identity roles. Through CI: `gh workflow run apply.yml --repo <owner>/lab-infra-platform -f environment=<env> -f stack=cluster`. Locally: `terraform init -backend-config="bucket=lab-tfstate-platform-<shared-id>" && terraform apply`
 8. Connect and install Argo CD with the root app (once per cluster): `aws eks update-kubeconfig --name lab-<env> --region eu-central-1 && scripts/bootstrap-argocd.sh <env> <owner>` (run in `lab-infra-platform`)
 9. Watch Argo CD create the Applications (retries cover start-up ordering): `kubectl -n argocd get applications`
 10. Read the values for gitops, in `envs/<env>/cluster`: `terraform output gitops_values`
 11. Read the Kubernetes service IP: `kubectl get svc kubernetes -o jsonpath='{.spec.clusterIP}'`
-12. In `lab-gitops/envs/<env>/values`, set `vpcId` and `clusterName` in `apps.yaml`; `vpcCidr` and `kubernetesServiceIp` (`<ip>/32`) in `cluster.yaml`; `vpcCidr` and `ingress.albSecurityGroupId` in `backend.yaml` and `web.yaml`. Replace `vpc-TODO` and `sg-TODO`.
+12. In `lab-gitops/envs/<env>/values`, set `vpcId` and `clusterName` in `apps.yaml`; `vpcCidr` and `kubernetesServiceIp` (`<ip>/32`) in `postgres.yaml`; `vpcCidr` and `ingress.albSecurityGroupId` in `backend.yaml` and `web.yaml`. Replace `vpc-TODO` and `sg-TODO`.
 13. Merge the change to `main` by pull request. Argo CD syncs it automatically.
 14. Wait for the shared ALB (state `active`): `aws elbv2 describe-load-balancers --names lab-<env>-alb --region eu-central-1 --query 'LoadBalancers[0].State.Code' --output text`
 15. Check workloads: `kubectl -n lab get pods`

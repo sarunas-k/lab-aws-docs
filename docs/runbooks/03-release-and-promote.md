@@ -1,12 +1,12 @@
 # 03 Release and promote
 
-| Trigger (in `lab-backend`, `lab-web`, `lab-cluster`) | Target | Image tag |
+| Trigger (in `lab-backend`, `lab-web`) | Target | Image tag |
 |---|---|---|
 | Push to `main` | dev | 12-character commit SHA |
 | Tag `vX.Y.Z` | test | the tag |
 | Manual dispatch with a tag | prod | the tag |
 
-Each target rebuilds the same commit in its own account and ECR. The `release` job runs in the GitHub Environment of the target and waits for approval where `lab-github` requires a reviewer (example config: `prod` in the app repositories). Nothing writes to a cluster directly: the bot opens a pull request in `lab-gitops`.
+Each target rebuilds the same commit in its own account and ECR. The `release` job runs in the GitHub Environment of the target and waits for approval where the Environment has a required reviewer (`prod` in the app repositories, see [repository settings](../repository-settings.md)). Nothing writes to a cluster directly: the bot opens a pull request in `lab-gitops`.
 
 1. Open a pull request in the app repository. Required checks: `test` and `image / image`.
    ```
@@ -40,6 +40,6 @@ Each target rebuilds the same commit in its own account and ECR. The `release` j
 
 Notes:
 - `lab-web` also syncs `src/images` to `s3://lab-dev-assets/images` on pushes to `main`.
-- `lab-cluster` publishes the aggregator image. Its bump changes `envs/<env>/values/cluster.yaml`.
+- `lab-backend` also runs the visit aggregator CronJob from the same image, so one bump updates both.
 - Prod rebuilds from the tag; the bytes can differ from test if base images changed.
 - The bot opens a pull request only. If the tag is already current, no pull request is opened.

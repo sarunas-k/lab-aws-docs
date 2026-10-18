@@ -19,7 +19,7 @@ flowchart TD
 - SCPs on the root: no leaving the organization, no actions outside eu-central-1, eu-west-1 and us-east-1 (global services excepted), no root user in member accounts, no stopping CloudTrail. SCPs do not apply to the management account.
 - Each environment has its own account. Accounts have `prevent_destroy`.
 - State isolation: the shared bucket policy lets an account use only its own `envs/<env>/` prefix.
-- CI uses GitHub OIDC roles, no stored AWS keys. The apply role in a workload account has AdministratorAccess behind a GitHub Environment (in the example `lab-github` config, `test` and `prod` require a reviewer, `dev` does not).
+- CI uses GitHub OIDC roles, no stored AWS keys. The apply role in a workload account has AdministratorAccess behind a GitHub Environment (in the documented settings, `test` and `prod` require a reviewer, `dev` does not; see [repository settings](repository-settings.md)).
 - Budget: 100 USD per month, alerts at 50, 80 and 100 percent of actual spend.
 - Gap: no resources are defined for `lab-log-archive`. Organization CloudTrail, GuardDuty, Security Hub and Config are not implemented.
 
@@ -61,7 +61,7 @@ flowchart LR
   A --> K[EKS]
 ```
 
-Reusable workflows live in `lab-github-workflows` and are called by `lab-backend`, `lab-web` and `lab-cluster`. Each environment rebuilds the same commit in its own account and ECR.
+Reusable workflows live in `lab-github-workflows` and are called by `lab-backend` and `lab-web`. Each environment rebuilds the same commit in its own account and ECR.
 
 | Trigger | Target |
 |---|---|
@@ -70,7 +70,7 @@ Reusable workflows live in `lab-github-workflows` and are called by `lab-backend
 | manual dispatch with a tag | prod |
 
 - No path writes to a cluster or to `main` directly. The bot only opens a PR that changes the one `tag:` line in `envs/<env>/values/`.
-- Gates: Trivy fails on CRITICAL before push. The ECR scan is checked after push. Branch rulesets (from `lab-github`) require a PR, one approval and status checks.
+- Gates: Trivy fails on CRITICAL before push. The ECR scan is checked after push. Branch rulesets (documented in [repository settings](repository-settings.md)) require a PR, one approval and status checks.
 - ECR tags are immutable. Images are signed with keyless cosign. Nothing in the cluster verifies signatures.
 - Not written: SonarCloud scan and the post-deploy smoke test. Placeholders remain: `OWNER`, `ACCOUNT_ID`, `sg-TODO`, `vpc-TODO` and the repository variables.
 
@@ -90,7 +90,7 @@ flowchart LR
   E["1 destroy edge<br/>(ALB still exists)"] --> T["2 teardown.sh<br/>ALB, volumes"] --> C["3 destroy cluster"]
 ```
 
-Each of `dev`, `test` and `prod` has the three stacks in `lab-infra-platform/envs/<env>/<stack>`, using shared modules. `apply.yml` applies `base`, `cluster` or `edge`; the `cluster` stack is AWS-only and needs no Kubernetes API access. Destroy is local only: `scripts/destroy.sh <env> <region>` destroys `edge` first, runs `scripts/teardown.sh` (Argo CD scaled down, Ingresses, CNPG clusters and PVCs removed, leftover volumes found by the `lab-cluster` tag) and then destroys `cluster`. The `cost-guard` workflow in `lab-infra-platform` runs every 6 hours and fails when an environment still has a cluster or NAT gateway.
+Each of `dev`, `test` and `prod` has the three stacks in `lab-infra-platform/envs/<env>/<stack>`, using shared modules. `apply.yml` applies `base`, `cluster` or `edge`; the `cluster` stack is AWS-only and needs no Kubernetes API access. Destroy is local only: `scripts/destroy.sh <env> <region>` destroys `edge` first, runs `scripts/teardown.sh` (Argo CD scaled down, Ingresses, CNPG clusters and PVCs removed, leftover volumes found by the volume tag `lab-cluster=lab-<env>`) and then destroys `cluster`. The `cost-guard` workflow in `lab-infra-platform` runs every 6 hours and fails when an environment still has a cluster or NAT gateway.
 
 - `base` is never destroyed: images, backups, assets and alert topics outlive the cluster.
 - Terraform owns the AWS side only. `scripts/bootstrap-argocd.sh <env> <owner>` installs Argo CD and the root app-of-apps once per cluster; after that Argo CD syncs everything inside the cluster from `lab-gitops`. Argo CD itself is upgraded by rerunning the script.
@@ -106,7 +106,7 @@ Each of `dev`, `test` and `prod` has the three stacks in `lab-infra-platform/env
 sequenceDiagram
   participant BE as lab-backend
   participant V as Valkey
-  participant AG as Aggregator (00:05 UTC)
+  participant AG as Aggregator (same image, 00:05 UTC)
   participant PG as Postgres
   BE->>V: INCR visits, PFADD uniques (total and day)
   AG->>V: read yesterday, GET raw uniques:total
@@ -117,7 +117,7 @@ sequenceDiagram
   BE->>PG: read daily_stats (history)
 ```
 
-Each `GET /api/visit` identifies the visitor by cookie `lab_vid` and updates counters in one pipeline. Valkey holds live counters, Postgres holds history. `lab-cluster` runs the nightly aggregator.
+Each `GET /api/visit` identifies the visitor by cookie `lab_vid` and updates counters in one pipeline. Valkey holds live counters, Postgres holds history. The nightly aggregator is a CronJob that runs from the `lab-backend` image (`python -m aggregator.job`).
 
 - Unique counts use HyperLogLog (about 1 percent error). Daily keys expire after 3 days.
 - The aggregator is idempotent. `AGGREGATE_DAY=YYYY-MM-DD` redoes a day. The first history row appears after the first full day.

@@ -14,8 +14,8 @@ Status: Accepted.
 ## Consequences
 - No RDS bill; the operator, upgrades and restores are our work.
 - Dev and test have no standby: node loss means downtime until rescheduling.
-- The operator is installed by Argo CD from the upstream chart (`lab-gitops/charts/apps/templates/upstream.yaml`); the `lab-postgres` cluster is `lab-gitops/charts/lab-cluster`.
-- Backups outlive the cluster. Restore needs a new `serverName` per restore (procedure in `lab-gitops/charts/lab-cluster/README.md`).
+- The operator is installed by Argo CD from the upstream chart (`lab-gitops/charts/apps/templates/upstream.yaml`); the `lab-postgres` cluster is `lab-gitops/charts/lab-postgres`.
+- Backups outlive the cluster. Restore needs a new `serverName` per restore (procedure in `lab-gitops/charts/lab-postgres/README.md`).
 - The `Cluster` has `Delete=false`; Argo CD never removes the database.
 
 ## Alternatives considered

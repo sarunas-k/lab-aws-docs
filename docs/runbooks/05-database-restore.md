@@ -1,8 +1,8 @@
 # 05 Database restore
 
-Use after the `cluster` stack was destroyed and recreated. Backups survive because the bucket `lab-<env>-cnpg-backups` is in the `base` stack. Full detail: `lab-gitops/charts/lab-cluster/README.md`.
+Use after the `cluster` stack was destroyed and recreated. Backups survive because the bucket `lab-<env>-cnpg-backups` is in the `base` stack. Full detail: `lab-gitops/charts/lab-postgres/README.md`.
 
-| Setting (`lab-gitops/envs/<env>/values/cluster.yaml`) | Fresh install | First restore | Second restore |
+| Setting (`lab-gitops/envs/<env>/values/postgres.yaml`) | Fresh install | First restore | Second restore |
 |---|---|---|---|
 | `bootstrap.mode` | `initdb` | `recovery` | `recovery` |
 | `bootstrap.recovery.sourceServerName` | `lab-postgres` | `lab-postgres` | `lab-postgres-r1` |
@@ -10,10 +10,10 @@ Use after the `cluster` stack was destroyed and recreated. Backups survive becau
 
 In `recovery` mode, `backup.serverName` must differ from `sourceServerName`, or the chart refuses to render. The restored cluster writes WAL to a new folder because CNPG refuses a folder that holds another cluster's WAL ("Expected empty archive").
 
-Do this before step 8 of [02](02-deploy-environment.md), i.e. before Argo CD is bootstrapped. Argo CD syncs `lab-cluster` within minutes of the bootstrap.
+Do this before step 8 of [02](02-deploy-environment.md), i.e. before Argo CD is bootstrapped. Argo CD syncs `lab-postgres` within minutes of the bootstrap.
 
 1. Confirm backups exist: `aws s3 ls s3://lab-<env>-cnpg-backups/<sourceServerName>/ --recursive | head`. The folder is the `sourceServerName` from the table (`lab-postgres`, or `lab-postgres-r1` for the second restore).
-2. Edit `envs/<env>/values/cluster.yaml` as in the table (first restore column).
+2. Edit `envs/<env>/values/postgres.yaml` as in the table (first restore column).
 3. Merge to `main` by pull request.
 4. Create the cluster stack and bootstrap Argo CD: [02](02-deploy-environment.md), steps 6 to 8.
 5. Watch the restore: `kubectl -n lab get pods -w`
@@ -30,6 +30,6 @@ Started empty by mistake (Cluster in `initdb`, WAL archiving fails with "Expecte
 
 Notes:
 - The app user password is not restored. CNPG creates a new Secret.
-- Point-in-time recovery: add `recoveryTarget` to the `recovery` block in `templates/cluster.yaml`.
+- Point-in-time recovery: add `recoveryTarget` to the `recovery` block in `templates/cluster.yaml` in `lab-gitops/charts/lab-postgres`.
 - Never use `recovery` on an environment with no backups: the Cluster never becomes ready.
 - Valkey counters are not in this backup. The backend restores `uniques:total` from the `hll_snapshots` table at start; `visits:total` restarts at zero.

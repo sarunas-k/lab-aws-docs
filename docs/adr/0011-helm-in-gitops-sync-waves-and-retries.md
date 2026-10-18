@@ -9,7 +9,7 @@ Status: Accepted.
 ## Decision
 - `scripts/bootstrap-argocd.sh` installs Argo CD and a root app-of-apps (`charts/apps`) once per cluster; Terraform does not (ADR 0015). Pod Identity roles for add-ons stay in Terraform.
 - All in-cluster resources are Helm charts in `lab-gitops`: upstream add-ons with pinned versions, and four own charts.
-- Order: wave 0 add-ons, 1 `lab-platform-config`, 2 `lab-cluster`, 3 `lab-backend` and `lab-web`.
+- Order: wave 0 add-ons, 1 `lab-platform-config`, 2 `lab-postgres`, 3 `lab-backend` and `lab-web`.
 - The bootstrap script adds an `Application` health check so waves can gate.
 - Every Application also retries: 10 attempts, 10 s doubling to a 5 min cap (about 20 minutes), with `SkipDryRunOnMissingResource`.
 

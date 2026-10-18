@@ -1,6 +1,6 @@
 # lab-docs
 
-Landing page for a ten-repository AWS DevOps portfolio: a visitor-counter dashboard and the platform designed around it.
+Landing page for an eight-repository AWS DevOps portfolio: a visitor-counter dashboard and the platform designed around it.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ The page is served through CloudFront (`*.cloudfront.net`; there is no custom do
 | Area | Content | Source |
 |---|---|---|
 | Counters | Total and unique visits | `lab-backend` (`GET /api/visit`), Valkey |
-| History chart | Visits and unique visitors, last 30 days | Postgres `daily_stats`, written nightly by `lab-cluster` |
+| History chart | Visits and unique visitors, last 30 days | Postgres `daily_stats`, written nightly by the aggregator in `lab-backend` |
 | Platform cards | Requests, 5xx and 4xx rate, response time, healthy targets, node CPU, cache CPU | `metrics.json` in S3, written every minute by a Lambda |
 
 ## Repositories
@@ -23,12 +23,10 @@ The page is served through CloudFront (`*.cloudfront.net`; there is no custom do
 |---|---|---|
 | `lab-bootstrap` | Seed state bucket, GitHub OIDC provider and CI roles | CloudFormation, StackSets |
 | `lab-infra-org` | Organization, OUs, accounts, SCPs, budget | Terraform |
-| `lab-github` | Repositories, rulesets, environments | Terraform (GitHub provider) |
 | `lab-infra-platform` | Per-environment `base`, `cluster`, `edge` stacks and their pipelines | Terraform, GitHub Actions |
-| `lab-gitops` | Helm charts and Argo CD app-of-apps for dev, test, prod; installs the CloudNativePG operator and defines the `lab-postgres` cluster | Helm, Argo CD |
-| `lab-backend` | Visit counting and history API | Python 3.12, FastAPI, Valkey, Postgres |
+| `lab-gitops` | Helm charts and Argo CD app-of-apps for dev, test, prod; installs the CloudNativePG operator and defines the `lab-postgres` cluster and the aggregator CronJob | Helm, Argo CD |
+| `lab-backend` | Visit counting and history API, and the nightly aggregator (Valkey to Postgres) from the same image | Python 3.12, FastAPI, Valkey, Postgres |
 | `lab-web` | Static dashboard | HTML, CSS, ES modules, nginx |
-| `lab-cluster` | Image of the daily aggregator (Valkey to Postgres); the CronJob and database are deployed from `lab-gitops` | Python |
 | `lab-github-workflows` | Reusable CI, release and apply workflows | GitHub Actions |
 | `lab-docs` | This documentation | Markdown, Mermaid |
 
@@ -54,7 +52,8 @@ Primary region `eu-central-1`. SCP-allowed regions: `eu-central-1`, `eu-west-1`,
 
 | Item | State |
 |---|---|
-| Terraform (org, GitHub, `base`, `cluster`, `edge`), CloudFormation seed and StackSets | Complete. |
+| Terraform (org, `base`, `cluster`, `edge`), CloudFormation seed and StackSets | Complete. |
+| GitHub settings (rulesets, Environments, variables) | Documented in `docs/repository-settings.md`, configured by hand. |
 | Helm charts and Argo CD app-of-apps | Complete. |
 | Backend, web, aggregator code | Complete, with unit and integration tests. |
 | Reusable workflows (CI, release, apply) and the cost-guard workflow | Complete. |
@@ -70,7 +69,7 @@ Details are in each repository README and in the runbooks.
 
 1. `lab-bootstrap` stage 1: CloudFormation stack in the management account (state bucket, OIDC, org roles).
 2. `lab-infra-org`: create and import the organization, then apply OUs, accounts, SCPs, budget.
-3. `lab-github`: apply with a personal token to create rulesets and environments.
+3. GitHub settings: configure rulesets, Environments and variables by hand ([repository settings](docs/repository-settings.md)).
 4. `lab-bootstrap` stage 2: StackSets for CI roles in workload accounts and the platform state bucket.
 5. Fill placeholders and set repository variables in `lab-infra-platform` (`DEV_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET`, ...).
 6. `lab-infra-platform`: apply `base`, then `cluster` (workflow `apply.yml` or locally; the stack is AWS-only).
@@ -85,4 +84,4 @@ Budget about 100 USD per month, alerts at 50, 80 and 100 percent. The `cost-guar
 
 ## Documents
 
-`docs/architecture.md` (architecture and diagrams), `docs/cost.md` (estimate and controls), `docs/security.md` (controls and gaps), `docs/adr/` (decision records), `docs/runbooks/` (operations).
+`docs/architecture.md` (architecture and diagrams), `docs/cost.md` (estimate and controls), `docs/security.md` (controls and gaps), `docs/repository-settings.md` (GitHub settings), `docs/adr/` (decision records), `docs/runbooks/` (operations).
