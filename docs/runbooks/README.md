@@ -3,7 +3,7 @@
 | Runbook | Use it to |
 |---|---|
 | [01 Bootstrap from zero](01-bootstrap-from-zero.md) | Create the organization, accounts, CI roles, state buckets and GitHub configuration |
-| [02 Deploy an environment](02-deploy-environment.md) | Apply `base`, `cluster`, `edge` and reach the CloudFront URL |
+| [02 Deploy an environment](02-deploy-environment.md) | Apply `base`, `cluster`, bootstrap Argo CD, apply `edge` and reach the CloudFront URL |
 | [03 Release and promote](03-release-and-promote.md) | Move a change from `main` to dev, test and prod |
 | [04 Destroy and cost control](04-destroy-and-cost-control.md) | Stop AWS charges for one environment and confirm nothing is left |
 | [05 Database restore](05-database-restore.md) | Restore Postgres from S3 after a cluster rebuild |

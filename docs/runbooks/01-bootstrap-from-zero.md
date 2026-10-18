@@ -40,6 +40,6 @@ Needs: AWS CLI v2, Terraform 1.10 or later, `gh`, admin login to the management 
       --deployment-targets OrganizationalUnitIds=<infrastructure-ou-id> --regions eu-central-1
     ```
 15. Check both: `aws cloudformation list-stack-instances --stack-set-name lab-member-account` (repeat for `lab-shared-state`)
-16. Set variables on `lab-infra-platform`: `gh variable set DEV_ACCOUNT_ID --repo <owner>/lab-infra-platform --body <id>`. Repeat for `TEST_ACCOUNT_ID`, `PROD_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET` (`lab-tfstate-platform-<shared-id>`), `ALERT_EMAIL`, and the three `*_ACCOUNT_ID` on `lab-backend`, `lab-web`, `lab-cluster`.
+16. Set variables on `lab-infra-platform`: `gh variable set DEV_ACCOUNT_ID --repo <owner>/lab-infra-platform --body <id>`. Repeat for `TEST_ACCOUNT_ID`, `PROD_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET` (`lab-tfstate-platform-<shared-id>`), `ALERT_EMAIL`, `KUBERNETES_VERSION`, `API_ALLOWED_CIDRS`, `ADMIN_ROLE_ARNS` (the last two as JSON lists), and the three `*_ACCOUNT_ID` on `lab-backend`, `lab-web`, `lab-cluster`.
 17. Set the secret on those three repositories: `gh secret set GITOPS_TOKEN --repo <owner>/lab-backend` (contents and pull-requests write on `lab-gitops`).
 18. Continue with [02 Deploy an environment](02-deploy-environment.md).

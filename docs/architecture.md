@@ -78,16 +78,23 @@ Reusable workflows live in `lab-github-workflows` and are called by `lab-backend
 
 ```mermaid
 flowchart LR
-  B["base<br/>ECR, S3 buckets, SNS"] -->|"1 apply"| C["cluster<br/>VPC, EKS, Valkey,<br/>Pod Identity, Argo CD"]
-  C -->|"2 apply"| S["Argo CD syncs apps,<br/>controller creates ALB"]
+  B["base<br/>ECR, S3 buckets, SNS"] -->|"1 apply"| C["cluster<br/>VPC, EKS, Valkey,<br/>Pod Identity (AWS only)"]
+  C -->|"2 bootstrap-argocd.sh"| S["Argo CD syncs apps,<br/>controller creates ALB"]
   S -->|"3 wait, then apply"| E["edge<br/>CloudFront, WAF, Lambda,<br/>alarms, dashboard"]
 ```
 
-Each of `dev`, `test` and `prod` has the three stacks in `lab-infra-platform/envs/<env>/<stack>`, using shared modules. `apply.yml` applies `base` or `edge` (the `cluster` stack is applied locally because its Helm provider needs the restricted Kubernetes API). `destroy.yml` runs `scripts/teardown.sh` (Argo CD scaled down, Ingresses, CNPG clusters and PVCs removed) and destroys `edge`; `cluster` is destroyed locally.
+Destroy runs locally in the reverse order, with the in-cluster cleanup between the two stacks:
+
+```mermaid
+flowchart LR
+  E["1 destroy edge<br/>(ALB still exists)"] --> T["2 teardown.sh<br/>ALB, volumes"] --> C["3 destroy cluster"]
+```
+
+Each of `dev`, `test` and `prod` has the three stacks in `lab-infra-platform/envs/<env>/<stack>`, using shared modules. `apply.yml` applies `base`, `cluster` or `edge`; the `cluster` stack is AWS-only and needs no Kubernetes API access. Destroy is local only: `scripts/destroy.sh <env> <region>` destroys `edge` first, runs `scripts/teardown.sh` (Argo CD scaled down, Ingresses, CNPG clusters and PVCs removed, leftover volumes found by the `lab-cluster` tag) and then destroys `cluster`. The `cost-guard` workflow in `lab-infra-platform` runs every 6 hours and fails when an environment still has a cluster or NAT gateway.
 
 - `base` is never destroyed: images, backups, assets and alert topics outlive the cluster.
-- Terraform owns the AWS side and bootstraps Argo CD with a root app-of-apps. Everything inside the cluster belongs to `lab-gitops`.
-- `edge` reads the ALB, bucket and SNS topics with data sources, so it must be applied after the ALB exists and destroyed before the cluster.
+- Terraform owns the AWS side only. `scripts/bootstrap-argocd.sh <env> <owner>` installs Argo CD and the root app-of-apps once per cluster; after that Argo CD syncs everything inside the cluster from `lab-gitops`. Argo CD itself is upgraded by rerunning the script.
+- `edge` reads the ALB, bucket and SNS topics with data sources, so it must be applied after the ALB exists and destroyed before the ALB goes, that is, first.
 - Start-up ordering between Argo CD Applications relies on a health check for `Application` plus retries (10 attempts, about 20 minutes).
 - Environments differ: dev and test use Spot nodes and 2 AZs; prod uses On-Demand nodes, 3 AZs, 2 replicas per app and 2 Postgres instances.
 - Valkey is one `cache.t4g.micro` node, no replica, no snapshots.

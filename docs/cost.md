@@ -37,7 +37,8 @@ The budget covers about 250 environment-hours (100 / 0.40). Left running for a m
 ## Guardrails
 
 - AWS Budget `lab-monthly`: email at 50, 80 and 100 percent of actual spend. No forecast alert and no automatic shutdown.
-- `destroy.yml` in `lab-infra-platform`: runs `scripts/teardown.sh`, then destroys `edge`, then `cluster`. The environment name must be typed again to confirm.
+- `scripts/destroy.sh <env> <region>` in `lab-infra-platform`, run locally: destroys `edge`, runs `scripts/teardown.sh`, then destroys `cluster`. The environment name must be typed to confirm.
+- `cost-guard.yml` in `lab-infra-platform`: every 6 hours, fails when an environment has a running EKS cluster or NAT gateway, so GitHub emails the repository owner. It prints an estimated hourly cost (0.40 USD per environment).
 - Cost settings in code: one NAT gateway, one Valkey node without snapshots, 7-day log retention, ECR keeps 20 images, old S3 versions expire.
 - SCP `lab-deny-unapproved-regions` blocks resources outside `eu-central-1`, `eu-west-1` and `us-east-1`.
 
@@ -47,14 +48,14 @@ Check for leftovers after a destroy:
 aws eks list-clusters
 aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'
 aws ec2 describe-nat-gateways --filter Name=state,Values=available
-aws ec2 describe-volumes --filters Name=status,Values=available
+aws ec2 describe-volumes --filters Name=tag:lab-cluster,Values=lab-<env>
 ```
 
 ## What keeps costing after destroy
 
 - `base` stack: ECR images, assets bucket, CNPG backup bucket, SNS topics. Storage only.
 - Terraform state buckets (old versions expire after 90 days).
-- Prod EBS volumes: the prod StorageClass uses `reclaimPolicy: Retain`. Delete them by hand if the data is not needed.
+- Prod EBS volumes: the prod StorageClass uses `reclaimPolicy: Retain`. They carry the tag `lab-cluster=lab-prod`. Delete them by hand if the data is not needed.
 - Anything `teardown.sh` could not remove. It stops after 600 seconds and prints what is left.
 
 ## Actual spend

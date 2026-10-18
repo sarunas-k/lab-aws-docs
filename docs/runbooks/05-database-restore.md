@@ -10,12 +10,12 @@ Use after the `cluster` stack was destroyed and recreated. Backups survive becau
 
 In `recovery` mode, `backup.serverName` must differ from `sourceServerName`, or the chart refuses to render. The restored cluster writes WAL to a new folder because CNPG refuses a folder that holds another cluster's WAL ("Expected empty archive").
 
-Do this before step 7 of [02](02-deploy-environment.md), i.e. before the `cluster` stack is applied. Argo CD syncs `lab-cluster` within minutes of the cluster existing.
+Do this before step 8 of [02](02-deploy-environment.md), i.e. before Argo CD is bootstrapped. Argo CD syncs `lab-cluster` within minutes of the bootstrap.
 
 1. Confirm backups exist: `aws s3 ls s3://lab-<env>-cnpg-backups/<sourceServerName>/ --recursive | head`. The folder is the `sourceServerName` from the table (`lab-postgres`, or `lab-postgres-r1` for the second restore).
 2. Edit `envs/<env>/values/cluster.yaml` as in the table (first restore column).
 3. Merge to `main` by pull request.
-4. Create the cluster stack: [02](02-deploy-environment.md), steps 6 and 7.
+4. Create the cluster stack and bootstrap Argo CD: [02](02-deploy-environment.md), steps 6 to 8.
 5. Watch the restore: `kubectl -n lab get pods -w`
 6. Check status: `kubectl -n lab get cluster lab-postgres` shows `Cluster in healthy state`.
 7. Check a new backup is written to the new folder: `kubectl -n lab get backup`

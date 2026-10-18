@@ -29,7 +29,7 @@ The page is served through CloudFront (`*.cloudfront.net`; there is no custom do
 | `lab-backend` | Visit counting and history API | Python 3.12, FastAPI, Valkey, Postgres |
 | `lab-web` | Static dashboard | HTML, CSS, ES modules, nginx |
 | `lab-cluster` | Image of the daily aggregator (Valkey to Postgres); the CronJob and database are deployed from `lab-gitops` | Python |
-| `lab-github-workflows` | Reusable CI, release and destroy workflows | GitHub Actions |
+| `lab-github-workflows` | Reusable CI, release and apply workflows | GitHub Actions |
 | `lab-docs` | This documentation | Markdown, Mermaid |
 
 ## Accounts and OUs
@@ -54,11 +54,10 @@ Primary region `eu-central-1`. SCP-allowed regions: `eu-central-1`, `eu-west-1`,
 
 | Item | State |
 |---|---|
-| Terraform: org, GitHub, `base`, `cluster`, `edge` stacks | Complete. |
-| CloudFormation seed and StackSets | Complete. |
+| Terraform (org, GitHub, `base`, `cluster`, `edge`), CloudFormation seed and StackSets | Complete. |
 | Helm charts and Argo CD app-of-apps | Complete. |
 | Backend, web, aggregator code | Complete, with unit and integration tests. |
-| Reusable workflows (CI, release, apply, destroy) | Complete. |
+| Reusable workflows (CI, release, apply) and the cost-guard workflow | Complete. |
 | Placeholders to fill | `OWNER`, `ACCOUNT_ID`, `vpc-TODO`, `sg-TODO`, repository variables |
 | SonarCloud scan, post-deploy smoke test | Not written |
 | Organization CloudTrail, GuardDuty, Security Hub, Config | Not implemented (SCP `lab-protect-cloudtrail` exists, but no trail) |
@@ -74,22 +73,16 @@ Details are in each repository README and in the runbooks.
 3. `lab-github`: apply with a personal token to create rulesets and environments.
 4. `lab-bootstrap` stage 2: StackSets for CI roles in workload accounts and the platform state bucket.
 5. Fill placeholders and set repository variables in `lab-infra-platform` (`DEV_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET`, ...).
-6. `lab-infra-platform`: apply `base`, then `cluster`.
-7. Wait for Argo CD to sync `lab-gitops` and for the ALB `lab-<env>-alb` to exist.
+6. `lab-infra-platform`: apply `base`, then `cluster` (workflow `apply.yml` or locally; the stack is AWS-only).
+7. Run `scripts/bootstrap-argocd.sh <env> <owner>` once per cluster. Wait for Argo CD to sync `lab-gitops` and for the ALB `lab-<env>-alb` to exist.
 8. `lab-infra-platform`: apply `edge`. Open the CloudFront URL.
-9. Teardown: run the destroy workflow (teardown script and `edge`), then destroy `cluster` locally. `base` stays.
+9. Teardown, locally: `scripts/destroy.sh <env> <region>` destroys `edge`, runs `teardown.sh`, then destroys `cluster`. `base` stays. The `cost-guard` workflow reports environments still running.
 
 ## Cost
 
-Budget about 100 USD per month, alerts at 50, 80 and 100 percent. Estimated about 0.40 USD per hour per running environment
+Budget about 100 USD per month, alerts at 50, 80 and 100 percent. The `cost-guard` workflow runs every 6 hours and fails when a cluster or NAT gateway is running. Estimated about 0.40 USD per hour per running environment
 (EKS control plane 0.10, 2x t3.large, NAT, ALB, cache). This is an estimate.
 
 ## Documents
 
-| Document | Content |
-|---|---|
-| `docs/architecture.md` | Architecture and diagrams |
-| `docs/cost.md` | Cost estimate and controls |
-| `docs/security.md` | Security controls and gaps |
-| `docs/adr/` | Architecture decision records |
-| `docs/runbooks/` | Operational runbooks |
+`docs/architecture.md` (architecture and diagrams), `docs/cost.md` (estimate and controls), `docs/security.md` (controls and gaps), `docs/adr/` (decision records), `docs/runbooks/` (operations).

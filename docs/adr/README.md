@@ -18,5 +18,6 @@ Each record states the context, the decision and its consequences, including kno
 | [0012](0012-secrets-ssm-and-external-secrets.md) | Secrets via SSM Parameter Store and External Secrets | lab-infra-platform, lab-gitops |
 | [0013](0013-vpc-cni-network-policy-standard-mode.md) | VPC CNI network policy left in standard mode | lab-infra-platform, lab-gitops |
 | [0014](0014-cnpg-barman-in-tree-vs-plugin.md) | CNPG in-tree Barman backups instead of the Barman Cloud plugin | lab-gitops |
+| [0015](0015-argocd-bootstrap-script-and-local-destroy.md) | Argo CD bootstrapped by script, `cluster` stack AWS-only, destroy local and ordered | lab-infra-platform, lab-gitops |
 
 Status values: Accepted, Accepted with a deadline, Superseded. Add new records with the next number; do not edit the decision of an accepted record, supersede it.

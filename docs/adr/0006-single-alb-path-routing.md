@@ -12,7 +12,7 @@ Status: Accepted.
 - The ALB uses a Terraform-managed security group. Terraform opens node ports 8000 and 8080 from it.
 
 ## Consequences
-- The ALB belongs to Kubernetes, not Terraform. The `edge` stack reads it with `data "aws_lb"`, so it must be applied after Argo CD syncs, and destroyed before `cluster`. `scripts/teardown.sh` deletes Ingresses first.
+- The ALB belongs to Kubernetes, not Terraform. The `edge` stack reads it with `data "aws_lb"`, so it must be applied after Argo CD syncs, and destroyed before the ALB is removed (`edge` first). `scripts/teardown.sh` deletes Ingresses first.
 - The ALB security group id (`sg-TODO`) must be copied from Terraform output into gitops values.
 - Behaviour is defined in controller annotations, which are controller-specific.
 - Migration path: Gateway API `HTTPRoute` resources would replace the annotations. Not implemented; controller support level was not checked.

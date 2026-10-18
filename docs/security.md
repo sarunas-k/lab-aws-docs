@@ -22,11 +22,12 @@ No AWS keys are stored in GitHub. Roles come from `lab-bootstrap` and are assume
 | `lab-github-org-plan` | management | `lab-infra-org:pull_request` | ReadOnlyAccess, state read, lock file |
 | `lab-github-org-apply` | management | `lab-infra-org:environment:org-apply` | Organizations, SSO, CloudTrail, Budgets, Account, state bucket |
 | `lab-github-platform-plan` | dev, test, prod | `lab-infra-platform:pull_request` | ReadOnlyAccess, state read and lock under `envs/<env>/` |
+| `lab-github-cost-guard` | dev, test, prod | `lab-infra-platform:ref:refs/heads/main` | ReadOnlyAccess |
 | `lab-github-platform-apply` | dev, test, prod | `lab-infra-platform:environment:<env>` | AdministratorAccess, 2 h session |
 | `lab-github-ecr-push` | dev, test, prod | `lab-backend`, `lab-web`, `lab-cluster`: `environment:<env>` | ECR push to `lab-*` |
 | `lab-github-assets-sync` | dev, test, prod | `lab-web:environment:<env>` | Read, write, delete on `lab-<env>-assets/images/*` |
 
-State isolation: the shared bucket policy admits each account only under `envs/<env>/`, for `lab-github-platform-*` roles in the organization.
+State isolation: the shared bucket policy admits each account only under `envs/<env>/`, for the `lab-github-platform-*` roles and the operator's IAM Identity Center roles (`AWSReservedSSO_*`) in the organization.
 
 Repository controls (`lab-github`):
 - `protect-main`: pull request, 1 approval, code owner review, resolved threads, linear history, strict checks, no force-push. No admin bypass on `lab-bootstrap`, `lab-infra-org`, `lab-github`. `v*` tags are immutable.
@@ -51,7 +52,7 @@ The Valkey token and origin header value are also in Terraform state (private, e
 
 ## Network and pod hardening
 - Edge: CloudFront WAF (2000 requests per IP per 5 minutes, AWS common rules). ALB security group admits the CloudFront prefix list only; regional WAF blocks requests without `X-Origin-Verify`.
-- Nodes: IMDSv2 only, hop limit 1, encrypted root volumes. EKS API public access limited to `api_allowed_cidrs`.
+- Nodes: IMDSv2 only, hop limit 1, encrypted root volumes. EKS API public access limited to `api_allowed_cidrs`, which holds the operator's address; CI applies the AWS-only `cluster` stack without Kubernetes API access.
 - Namespace `lab`: Pod Security `restricted` enforced; default-deny ingress and egress, DNS rule, per-workload allow rules.
 - Application pods (backend, web, aggregator): non-root, seccomp `RuntimeDefault`, read-only root filesystem, capabilities dropped, no privilege escalation, no service account token. Postgres pods are managed by CloudNativePG and need API access.
 - Valkey: nodes-only security group, TLS, encryption at rest, AUTH token. Buckets: private, versioned, TLS-only.
@@ -67,4 +68,5 @@ The Valkey token and origin header value are also in Terraform state (private, e
 | No network policy outside `lab`; `lab` ingress admits the whole VPC CIDR; Postgres egress admits HTTPS to any non-VPC address | Per-namespace policies, ALB subnet CIDRs, S3 gateway endpoint with FQDN-capable CNI |
 | `require_code_owner_review` is on but no `CODEOWNERS` file exists; platform `ci.yml` sets no plan role (TODO) | Add `CODEOWNERS`; set per-environment `plan-role-arn` |
 | Argo CD uses `server.insecure`, no SSO; no secret rotation automation | Keep Argo CD unexposed; rotate by apply and pod restart |
+| Argo CD is installed by `scripts/bootstrap-argocd.sh` from an operator machine and is not managed by an Application | Upgrade by changing the chart version in the script and rerunning it |
 | Disaster recovery: not built | See [architecture](architecture.md) |

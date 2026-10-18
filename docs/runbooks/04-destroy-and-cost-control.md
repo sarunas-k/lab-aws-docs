@@ -6,33 +6,28 @@ Estimate: about 0.40 USD per hour per running environment (EKS control plane 0.1
 |---|---|
 | `edge`: CloudFront, WAF, metrics Lambda, alarms, dashboard | `base`: ECR repositories, `lab-<env>-assets`, `lab-<env>-cnpg-backups`, SNS alert topics |
 | `cluster`: VPC, NAT, EKS, nodes, Valkey, SSM parameters, Pod Identity roles | Accounts, state buckets, CI roles, budget |
-| ALB and EBS volumes created by Kubernetes (removed by `scripts/teardown.sh`; in `prod` the volumes are retained, see step 7) | Postgres backups in S3 (restore with [05](05-database-restore.md)) |
+| ALB and EBS volumes created by Kubernetes (removed by `scripts/teardown.sh`; in `prod` the volumes are retained, see step 5) | Postgres backups in S3 (restore with [05](05-database-restore.md)) |
 
 Counters in Valkey are lost. Postgres history is restored from the S3 backup only if you follow runbook 05 on the next deploy.
 
 1. Optional: take a fresh backup before destroying: `kubectl -n lab apply -f - <<< '{"apiVersion":"postgresql.cnpg.io/v1","kind":"Backup","metadata":{"name":"pre-destroy"},"spec":{"cluster":{"name":"lab-postgres"},"method":"barmanObjectStore"}}'`
 2. Wait for it: `kubectl -n lab get backup pre-destroy` shows `completed`.
-3. Start the destroy. `confirm` must equal the environment name.
+3. Destroy locally, in `lab-infra-platform`. Credentials must be an IAM Identity Center (SSO) role in the environment account, which the state bucket policy admits; `EXPECTED_ACCOUNT_ID` aborts the run on a mismatch and is required for `prod`. The terminal must be interactive. The operator needs Kubernetes API access: the CIDR in `api_allowed_cidrs`, and the operator role in `ADMIN_ROLE_ARNS` (or the one that created the cluster).
    ```
-   gh workflow run destroy.yml --repo <owner>/lab-infra-platform -f environment=<env> -f confirm=<env>
+   export PLATFORM_STATE_BUCKET=lab-tfstate-platform-<shared-id> EXPECTED_ACCOUNT_ID=<12-digit-id>
+   scripts/destroy.sh <env> eu-central-1
    ```
-4. Approve the GitHub Environment if it requires a reviewer, then follow the run: `gh run watch --repo <owner>/lab-infra-platform`
-5. The job runs `scripts/teardown.sh` (scale Argo CD to zero, delete Ingresses, CNPG clusters and PVCs, wait up to 600 s for the ALB and volumes to go), then destroys `edge`. It does not destroy `cluster`: the stack must reach the Kubernetes API, which is restricted to `api_allowed_cidrs`. Do step 6 for `cluster`.
-6. Destroy `cluster` from your machine (it needs `terraform.tfvars` and access to the API). To run everything locally instead of the workflow:
-   ```
-   cd lab-infra-platform && scripts/teardown.sh <env> eu-central-1
-   cd envs/<env>/edge && terraform init -backend-config="bucket=lab-tfstate-platform-<shared-id>" && terraform destroy
-   cd ../cluster && terraform init -backend-config="bucket=lab-tfstate-platform-<shared-id>" && terraform destroy
-   ```
-7. If `teardown.sh` prints `TIMEOUT`, delete the listed ALB or volumes by hand, then rerun the destroy. The script is safe to run twice. In `prod` the gp3 StorageClass has `reclaimPolicy: Retain`, so the EBS volumes stay and `TIMEOUT` is the expected result. Delete the retained volumes by hand after checking the data is not needed (see [cost](../cost.md)), then rerun the destroy.
+4. Type the environment name when asked. The script destroys `edge` first, while the ALB still exists, then runs `scripts/teardown.sh`, then destroys `cluster`. `base` is never destroyed. There is no destroy workflow. The script checks the Kubernetes API first, and sets placeholder values for the required `cluster` variables, which a destroy does not use.
+5. `teardown.sh` scales Argo CD to zero, deletes Ingresses, CNPG clusters and PVCs, and waits up to 600 s for the ALB and for volumes tagged `lab-cluster=lab-<env>` to go. If `edge` is still in state but the ALB is already gone, its destroy fails at the ALB lookup: run `terraform destroy -refresh=false` in `envs/<env>/edge`, then rerun the script. If it prints `TIMEOUT`, delete the listed ALB or volumes by hand and rerun; the script is safe to run twice. In `prod` the gp3 StorageClass has `reclaimPolicy: Retain`, so `teardown.sh` lists the retained volumes and exits 0. Delete them by hand after checking the data is not needed (see [cost](../cost.md)).
+6. The `cost-guard` workflow in `lab-infra-platform` runs every 6 hours (and on manual dispatch). It fails, which sends a GitHub notification, when an environment has an EKS cluster or an available NAT gateway, and prints the estimated hourly cost (0.40 USD per environment). Run it now: `gh workflow run cost-guard.yml --repo <owner>/lab-infra-platform`
 
-Confirm nothing is running (environment account, `--region eu-central-1`; every command returns empty or `0`; in `prod`, step 12 lists the retained volumes, see [cost](../cost.md)):
+Confirm nothing is running (environment account, `--region eu-central-1`; every command returns empty or `0`; in `prod`, step 11 lists the retained volumes, see [cost](../cost.md)):
 
-8. Clusters: `aws eks list-clusters --query clusters`
-9. Load balancers: `aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'`
-10. NAT gateways: `aws ec2 describe-nat-gateways --filter Name=state,Values=available,pending --query 'NatGateways[].NatGatewayId'`
-11. Cache: `aws elasticache describe-replication-groups --query 'ReplicationGroups[].ReplicationGroupId'`
-12. Volumes: `aws ec2 describe-volumes --filters Name=tag:kubernetes.io/cluster/lab-<env>,Values=owned --query 'length(Volumes)'`
-13. Elastic IPs: `aws ec2 describe-addresses --query 'Addresses[].PublicIp'`
-14. CloudFront: `aws cloudfront list-distributions --query "DistributionList.Items[].Comment"`
-15. Spend this month: Billing console, Cost Explorer, in the management account, grouped by linked account.
+7. Clusters: `aws eks list-clusters --query clusters`
+8. Load balancers: `aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'`
+9. NAT gateways: `aws ec2 describe-nat-gateways --filter Name=state,Values=available,pending --query 'NatGateways[].NatGatewayId'`
+10. Cache: `aws elasticache describe-replication-groups --query 'ReplicationGroups[].ReplicationGroupId'`
+11. Volumes: `aws ec2 describe-volumes --filters Name=tag:lab-cluster,Values=lab-<env> --query 'length(Volumes)'`
+12. Elastic IPs: `aws ec2 describe-addresses --query 'Addresses[].PublicIp'`
+13. CloudFront: `aws cloudfront list-distributions --query "DistributionList.Items[].Comment"`
+14. Spend this month: Billing console, Cost Explorer, in the management account, grouped by linked account.
