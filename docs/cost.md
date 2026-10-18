@@ -4,7 +4,7 @@ All figures are estimates in USD. Hourly prices other than the EKS control plane
 
 ## Assumptions
 
-- Budget: about 100 USD per month for the whole organization (`lab-infra-org/budget.tf`, variable `budget_limit_usd`).
+- Budget: about 100 USD per month for the whole organization (`lab-aws-infra-organization/budget.tf`, variable `budget_limit_usd`).
 - Environments run only while in use. `cluster` and `edge` are destroyed after each session; `base` stays.
 - Dev and test use Spot nodes, so the baseline is an upper bound for them. Prod uses On-Demand nodes.
 
@@ -37,8 +37,8 @@ The budget covers about 250 environment-hours (100 / 0.40). Left running for a m
 ## Guardrails
 
 - AWS Budget `lab-monthly`: email at 50, 80 and 100 percent of actual spend. No forecast alert and no automatic shutdown.
-- `scripts/destroy.sh <env> <region>` in `lab-infra-platform`, run locally: destroys `edge`, runs `scripts/teardown.sh`, then destroys `cluster`. The environment name must be typed to confirm.
-- `cost-guard.yml` in `lab-infra-platform`: every 6 hours, fails when an environment has a running EKS cluster or NAT gateway, so GitHub emails the repository owner. It prints an estimated hourly cost (0.40 USD per environment).
+- `scripts/destroy.sh <env> <region>` in `lab-aws-infra-environments`, run locally: destroys `edge`, runs `scripts/teardown.sh`, then destroys `cluster`. The environment name must be typed to confirm.
+- `cost-guard.yml` in `lab-aws-infra-environments`: every 6 hours, fails when an environment has a running EKS cluster or NAT gateway, so GitHub emails the repository owner. It prints an estimated hourly cost (0.40 USD per environment).
 - Cost settings in code: one NAT gateway, one Valkey node without snapshots, 7-day log retention, ECR keeps 20 images, old S3 versions expire.
 - SCP `lab-deny-unapproved-regions` blocks resources outside `eu-central-1`, `eu-west-1` and `us-east-1`.
 

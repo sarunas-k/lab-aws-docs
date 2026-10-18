@@ -2,9 +2,9 @@
 
 ## Account model
 
-One AWS account per environment (`lab-infra-org`), so the blast radius is the account. Accounts have `prevent_destroy`. OUs: Security (`lab-log-archive`, no resources defined), Infrastructure (`lab-shared-services`, platform state bucket), Workloads (`lab-dev`, `lab-test`, `lab-prod`).
+One AWS account per environment (`lab-aws-infra-organization`), so the blast radius is the account. Accounts have `prevent_destroy`. OUs: Security (`lab-log-archive`, no resources defined), Infrastructure (`lab-shared-services`, platform state bucket), Workloads (`lab-dev`, `lab-test`, `lab-prod`).
 
-SCPs from `lab-infra-org/scps.tf`, attached to the root. They never apply to the management account.
+SCPs from `lab-aws-infra-organization/scps.tf`, attached to the root. They never apply to the management account.
 
 | Policy | Effect |
 |---|---|
@@ -15,22 +15,22 @@ SCPs from `lab-infra-org/scps.tf`, attached to the root. They never apply to the
 
 ## CI identity: GitHub OIDC
 
-No AWS keys are stored in GitHub. Roles come from `lab-bootstrap` and are assumed only when the token `sub` (`repo:<owner>/...`) and `aud = sts.amazonaws.com` match.
+No AWS keys are stored in GitHub. Roles come from `lab-aws-infra-bootstrap` and are assumed only when the token `sub` (`repo:<owner>/...`) and `aud = sts.amazonaws.com` match.
 
 | Role | Account | Trusted `sub` suffix | Permissions |
 |---|---|---|---|
-| `lab-github-org-plan` | management | `lab-infra-org:pull_request` | ReadOnlyAccess, state read, lock file |
-| `lab-github-org-apply` | management | `lab-infra-org:environment:org-apply` | Organizations, SSO, CloudTrail, Budgets, Account, state bucket |
-| `lab-github-platform-plan` | dev, test, prod | `lab-infra-platform:pull_request` | ReadOnlyAccess, state read and lock under `envs/<env>/` |
-| `lab-github-cost-guard` | dev, test, prod | `lab-infra-platform:ref:refs/heads/main` | ReadOnlyAccess |
-| `lab-github-platform-apply` | dev, test, prod | `lab-infra-platform:environment:<env>` | AdministratorAccess, 2 h session |
-| `lab-github-ecr-push` | dev, test, prod | `lab-backend`, `lab-web`: `environment:<env>` | ECR push to `lab-*` |
-| `lab-github-assets-sync` | dev, test, prod | `lab-web:environment:<env>` | Read, write, delete on `lab-<env>-assets/images/*` |
+| `lab-github-org-plan` | management | `lab-aws-infra-organization:pull_request` | ReadOnlyAccess, state read, lock file |
+| `lab-github-org-apply` | management | `lab-aws-infra-organization:environment:org-apply` | Organizations, SSO, CloudTrail, Budgets, Account, state bucket |
+| `lab-github-platform-plan` | dev, test, prod | `lab-aws-infra-environments:pull_request` | ReadOnlyAccess, state read and lock under `envs/<env>/` |
+| `lab-github-cost-guard` | dev, test, prod | `lab-aws-infra-environments:ref:refs/heads/main` | ReadOnlyAccess |
+| `lab-github-platform-apply` | dev, test, prod | `lab-aws-infra-environments:environment:<env>` | AdministratorAccess, 2 h session |
+| `lab-github-ecr-push` | dev, test, prod | `lab-aws-backend`, `lab-aws-web`: `environment:<env>` | ECR push to `lab-*` |
+| `lab-github-assets-sync` | dev, test, prod | `lab-aws-web:environment:<env>` | Read, write, delete on `lab-<env>-assets/images/*` |
 
 State isolation: the shared bucket policy admits each account only under `envs/<env>/`, for the `lab-github-platform-*` roles and the operator's IAM Identity Center roles (`AWSReservedSSO_*`) in the organization.
 
 Repository controls (configured by hand, see [repository settings](repository-settings.md)):
-- `protect-main`: pull request, 1 approval, code owner review, resolved threads, linear history, strict checks, no force-push. No admin bypass on `lab-bootstrap`, `lab-infra-org`. `v*` tags are immutable.
+- `protect-main`: pull request, 1 approval, code owner review, resolved threads, linear history, strict checks, no force-push. No admin bypass on `lab-aws-infra-bootstrap`, `lab-aws-infra-organization`. `v*` tags are immutable.
 - Environments accept deployments from `main` and `v*` only. Secret scanning with push protection and Dependabot alerts are on.
 
 ## Secrets
@@ -43,7 +43,7 @@ Repository controls (configured by hand, see [repository settings](repository-se
 
 The Valkey token and origin header value are also in Terraform state (private, encrypted bucket). Kubernetes Secrets use EKS KMS envelope encryption.
 
-## Supply chain (`lab-github-workflows`)
+## Supply chain (`lab-aws-github-workflows`)
 | Stage | Control |
 |---|---|
 | Pull request | hadolint, build, Trivy fails on CRITICAL (unfixed ignored); fmt, validate, tflint, Checkov, cfn-lint |

@@ -8,7 +8,7 @@ Status: Accepted.
 
 ## Decision
 - `app-release.yml` is called per environment: push to `main` builds for dev, tag `vX.Y.Z` for test, manual dispatch with a tag for prod.
-- Each run rebuilds the same commit, runs Trivy (fails on CRITICAL before push), pushes to that account's ECR, checks the ECR scan, signs with cosign (keyless) and opens a PR in `lab-gitops` that changes `image.tag`.
+- Each run rebuilds the same commit, runs Trivy (fails on CRITICAL before push), pushes to that account's ECR, checks the ECR scan, signs with cosign (keyless) and opens a PR in `lab-aws-gitops` that changes `image.tag`.
 - ECR: immutable tags, scan on push, keep the last 20 images.
 
 ## Consequences

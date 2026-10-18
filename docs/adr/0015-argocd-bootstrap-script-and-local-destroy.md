@@ -10,7 +10,7 @@ Status: Accepted.
 
 ## Decision
 - `cluster` is AWS-only: VPC, EKS, Valkey, Pod Identity roles. `apply.yml` can apply it.
-- `scripts/bootstrap-argocd.sh <env> <owner>` installs Argo CD and the root app-of-apps once per cluster; afterwards Argo CD syncs the platform from `lab-gitops` and is upgraded by rerunning the script.
+- `scripts/bootstrap-argocd.sh <env> <owner>` installs Argo CD and the root app-of-apps once per cluster; afterwards Argo CD syncs the platform from `lab-aws-gitops` and is upgraded by rerunning the script.
 - Destroy is local only (`scripts/destroy.sh <env> <region>`), in the order `edge`, `scripts/teardown.sh`, `cluster`. The environment name is typed to confirm. There is no destroy workflow.
 - The gp3 StorageClass sets `tagSpecification_1: "lab-cluster=lab-<env>"`; `teardown.sh` finds volumes by that tag.
 - The `cost-guard` workflow runs every 6 hours and fails when a cluster or NAT gateway is running.

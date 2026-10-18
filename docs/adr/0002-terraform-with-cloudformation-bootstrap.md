@@ -7,7 +7,7 @@ Status: Accepted.
 - Every workload account needs a GitHub OIDC provider and CI roles before any pipeline can apply.
 
 ## Decision
-- `lab-bootstrap` stage 1 (CloudFormation): state bucket, OIDC provider and the org plan/apply roles in the management account.
+- `lab-aws-infra-bootstrap` stage 1 (CloudFormation): state bucket, OIDC provider and the org plan/apply roles in the management account.
 - Stage 2 (service-managed StackSets): per-account OIDC provider and CI roles, and the platform state bucket.
 - Everything else is Terraform, with an S3 backend and `use_lockfile` (no DynamoDB table).
 

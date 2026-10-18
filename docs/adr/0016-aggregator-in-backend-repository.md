@@ -8,10 +8,10 @@ Status: Accepted.
 - Both use the same libraries (`valkey`, `psycopg`).
 
 ## Decision
-- The aggregator is the package `aggregator/` in `lab-backend`, with integration tests in `tests/test_aggregator.py`.
+- The aggregator is the package `aggregator/` in `lab-aws-backend`, with integration tests in `tests/test_aggregator.py`.
 - The image is the same as the API; the CronJob overrides the command: `python -m aggregator.job`.
-- `lab-gitops` deploys the CronJob from `charts/lab-backend`, using the same image repository and tag as the Deployment. The Postgres cluster stays in `charts/lab-postgres`.
-- CI in `lab-backend` runs Valkey and Postgres service containers for the integration tests.
+- `lab-aws-gitops` deploys the CronJob from `charts/lab-backend`, using the same image repository and tag as the Deployment. The Postgres cluster stays in `charts/lab-postgres`.
+- CI in `lab-aws-backend` runs Valkey and Postgres service containers for the integration tests.
 
 ## Consequences
 - The data contract and the code that uses it change in one pull request and ship under one tag.

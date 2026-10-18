@@ -14,7 +14,7 @@ flowchart TD
   Wl --> P["lab-prod"]
 ```
 
-`lab-bootstrap` seeds the management account (state bucket, OIDC, CI roles) and, through StackSets, the member accounts. `lab-infra-org` creates the OUs, accounts, SCPs and budget. `lab-shared-services` holds the platform Terraform state bucket.
+`lab-aws-infra-bootstrap` seeds the management account (state bucket, OIDC, CI roles) and, through StackSets, the member accounts. `lab-aws-infra-organization` creates the OUs, accounts, SCPs and budget. `lab-shared-services` holds the platform Terraform state bucket.
 
 - SCPs on the root: no leaving the organization, no actions outside eu-central-1, eu-west-1 and us-east-1 (global services excepted), no root user in member accounts, no stopping CloudTrail. SCPs do not apply to the management account.
 - Each environment has its own account. Accounts have `prevent_destroy`.
@@ -55,13 +55,13 @@ flowchart LR
   PR[Pull request] --> CI["ci: lint, tests,<br/>hadolint, build, Trivy"]
   CI --> M[Merge to main]
   M --> R["app-release: build, Trivy,<br/>push ECR, ECR scan, cosign"]
-  R --> G["PR to lab-gitops<br/>image tag bump"]
+  R --> G["PR to lab-aws-gitops<br/>image tag bump"]
   G --> RV[Review and merge]
   RV --> A[Argo CD auto-sync]
   A --> K[EKS]
 ```
 
-Reusable workflows live in `lab-github-workflows` and are called by `lab-backend` and `lab-web`. Each environment rebuilds the same commit in its own account and ECR.
+Reusable workflows live in `lab-aws-github-workflows` and are called by `lab-aws-backend` and `lab-aws-web`. Each environment rebuilds the same commit in its own account and ECR.
 
 | Trigger | Target |
 |---|---|
@@ -90,10 +90,10 @@ flowchart LR
   E["1 destroy edge<br/>(ALB still exists)"] --> T["2 teardown.sh<br/>ALB, volumes"] --> C["3 destroy cluster"]
 ```
 
-Each of `dev`, `test` and `prod` has the three stacks in `lab-infra-platform/envs/<env>/<stack>`, using shared modules. `apply.yml` applies `base`, `cluster` or `edge`; the `cluster` stack is AWS-only and needs no Kubernetes API access. Destroy is local only: `scripts/destroy.sh <env> <region>` destroys `edge` first, runs `scripts/teardown.sh` (Argo CD scaled down, Ingresses, CNPG clusters and PVCs removed, leftover volumes found by the volume tag `lab-cluster=lab-<env>`) and then destroys `cluster`. The `cost-guard` workflow in `lab-infra-platform` runs every 6 hours and fails when an environment still has a cluster or NAT gateway.
+Each of `dev`, `test` and `prod` has the three stacks in `lab-aws-infra-environments/envs/<env>/<stack>`, using shared modules. `apply.yml` applies `base`, `cluster` or `edge`; the `cluster` stack is AWS-only and needs no Kubernetes API access. Destroy is local only: `scripts/destroy.sh <env> <region>` destroys `edge` first, runs `scripts/teardown.sh` (Argo CD scaled down, Ingresses, CNPG clusters and PVCs removed, leftover volumes found by the volume tag `lab-cluster=lab-<env>`) and then destroys `cluster`. The `cost-guard` workflow in `lab-aws-infra-environments` runs every 6 hours and fails when an environment still has a cluster or NAT gateway.
 
 - `base` is never destroyed: images, backups, assets and alert topics outlive the cluster.
-- Terraform owns the AWS side only. `scripts/bootstrap-argocd.sh <env> <owner>` installs Argo CD and the root app-of-apps once per cluster; after that Argo CD syncs everything inside the cluster from `lab-gitops`. Argo CD itself is upgraded by rerunning the script.
+- Terraform owns the AWS side only. `scripts/bootstrap-argocd.sh <env> <owner>` installs Argo CD and the root app-of-apps once per cluster; after that Argo CD syncs everything inside the cluster from `lab-aws-gitops`. Argo CD itself is upgraded by rerunning the script.
 - `edge` reads the ALB, bucket and SNS topics with data sources, so it must be applied after the ALB exists and destroyed before the ALB goes, that is, first.
 - Start-up ordering between Argo CD Applications relies on a health check for `Application` plus retries (10 attempts, about 20 minutes).
 - Environments differ: dev and test use Spot nodes and 2 AZs; prod uses On-Demand nodes, 3 AZs, 2 replicas per app and 2 Postgres instances.

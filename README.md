@@ -1,4 +1,4 @@
-# lab-docs
+# lab-aws-docs
 
 Landing page for an eight-repository AWS DevOps portfolio: a visitor-counter dashboard and the platform designed around it.
 
@@ -14,25 +14,25 @@ The page is served through CloudFront (`*.cloudfront.net`; there is no custom do
 | Area | Content | Source |
 |---|---|---|
 | Counters | Total and unique visits | `lab-backend` (`GET /api/visit`), Valkey |
-| History chart | Visits and unique visitors, last 30 days | Postgres `daily_stats`, written nightly by the aggregator in `lab-backend` |
+| History chart | Visits and unique visitors, last 30 days | Postgres `daily_stats`, written nightly by the aggregator in `lab-aws-backend` |
 | Platform cards | Requests, 5xx and 4xx rate, response time, healthy targets, node CPU, cache CPU | `metrics.json` in S3, written every minute by a Lambda |
 
 ## Repositories
 
 | Repository | Purpose | Tech |
 |---|---|---|
-| `lab-bootstrap` | Seed state bucket, GitHub OIDC provider and CI roles | CloudFormation, StackSets |
-| `lab-infra-org` | Organization, OUs, accounts, SCPs, budget | Terraform |
-| `lab-infra-platform` | Per-environment `base`, `cluster`, `edge` stacks and their pipelines | Terraform, GitHub Actions |
-| `lab-gitops` | Helm charts and Argo CD app-of-apps for dev, test, prod; installs the CloudNativePG operator and defines the `lab-postgres` cluster and the aggregator CronJob | Helm, Argo CD |
-| `lab-backend` | Visit counting and history API, and the nightly aggregator (Valkey to Postgres) from the same image | Python 3.12, FastAPI, Valkey, Postgres |
-| `lab-web` | Static dashboard | HTML, CSS, ES modules, nginx |
-| `lab-github-workflows` | Reusable CI, release and apply workflows | GitHub Actions |
-| `lab-docs` | This documentation | Markdown, Mermaid |
+| `lab-aws-infra-bootstrap` | Seed state bucket, GitHub OIDC provider and CI roles | CloudFormation, StackSets |
+| `lab-aws-infra-organization` | Organization, OUs, accounts, SCPs, budget | Terraform |
+| `lab-aws-infra-environments` | Per-environment `base`, `cluster`, `edge` stacks and their pipelines | Terraform, GitHub Actions |
+| `lab-aws-gitops` | Helm charts and Argo CD app-of-apps for dev, test, prod; installs the CloudNativePG operator and defines the `lab-postgres` cluster and the aggregator CronJob | Helm, Argo CD |
+| `lab-aws-backend` | Visit counting and history API, and the nightly aggregator (Valkey to Postgres) from the same image | Python 3.12, FastAPI, Valkey, Postgres |
+| `lab-aws-web` | Static dashboard | HTML, CSS, ES modules, nginx |
+| `lab-aws-github-workflows` | Reusable CI, release and apply workflows | GitHub Actions |
+| `lab-aws-docs` | This documentation | Markdown, Mermaid |
 
 ## Accounts and OUs
 
-Defined in `lab-infra-org`, one account per environment.
+Defined in `lab-aws-infra-organization`, one account per environment.
 
 ```mermaid
 flowchart TD
@@ -67,14 +67,14 @@ Primary region `eu-central-1`. SCP-allowed regions: `eu-central-1`, `eu-west-1`,
 
 Details are in each repository README and in the runbooks.
 
-1. `lab-bootstrap` stage 1: CloudFormation stack in the management account (state bucket, OIDC, org roles).
-2. `lab-infra-org`: create and import the organization, then apply OUs, accounts, SCPs, budget.
+1. `lab-aws-infra-bootstrap` stage 1: CloudFormation stack in the management account (state bucket, OIDC, org roles).
+2. `lab-aws-infra-organization`: create and import the organization, then apply OUs, accounts, SCPs, budget.
 3. GitHub settings: configure rulesets, Environments and variables by hand ([repository settings](docs/repository-settings.md)).
-4. `lab-bootstrap` stage 2: StackSets for CI roles in workload accounts and the platform state bucket.
-5. Fill placeholders and set repository variables in `lab-infra-platform` (`DEV_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET`, ...).
-6. `lab-infra-platform`: apply `base`, then `cluster` (workflow `apply.yml` or locally; the stack is AWS-only).
-7. Run `scripts/bootstrap-argocd.sh <env> <owner>` once per cluster. Wait for Argo CD to sync `lab-gitops` and for the ALB `lab-<env>-alb` to exist.
-8. `lab-infra-platform`: apply `edge`. Open the CloudFront URL.
+4. `lab-aws-infra-bootstrap` stage 2: StackSets for CI roles in workload accounts and the platform state bucket.
+5. Fill placeholders and set repository variables in `lab-aws-infra-environments` (`DEV_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET`, ...).
+6. `lab-aws-infra-environments`: apply `base`, then `cluster` (workflow `apply.yml` or locally; the stack is AWS-only).
+7. Run `scripts/bootstrap-argocd.sh <env> <owner>` once per cluster. Wait for Argo CD to sync `lab-aws-gitops` and for the ALB `lab-<env>-alb` to exist.
+8. `lab-aws-infra-environments`: apply `edge`. Open the CloudFront URL.
 9. Teardown, locally: `scripts/destroy.sh <env> <region>` destroys `edge`, runs `teardown.sh`, then destroys `cluster`. `base` stays. The `cost-guard` workflow reports environments still running.
 
 ## Cost
