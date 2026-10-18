@@ -1,3 +1,95 @@
 # lab-docs
 
-Architecture overview, ADRs and runbooks for the lab project.
+Landing page for a ten-repository AWS DevOps portfolio: a visitor-counter dashboard and the platform designed around it.
+
+## Purpose
+
+An AWS Organization, EKS, GitOps and CI/CD design written as code. The persistent `base` stack is separate
+from the destroyable `cluster` and `edge` stacks to limit cost.
+
+## What the dashboard shows
+
+The page is served through CloudFront (`*.cloudfront.net`; there is no custom domain and no Route 53).
+
+| Area | Content | Source |
+|---|---|---|
+| Counters | Total and unique visits | `lab-backend` (`GET /api/visit`), Valkey |
+| History chart | Visits and unique visitors, last 30 days | Postgres `daily_stats`, written nightly by `lab-cluster` |
+| Platform cards | Requests, 5xx and 4xx rate, response time, healthy targets, node CPU, cache CPU | `metrics.json` in S3, written every minute by a Lambda |
+
+## Repositories
+
+| Repository | Purpose | Tech |
+|---|---|---|
+| `lab-bootstrap` | Seed state bucket, GitHub OIDC provider and CI roles | CloudFormation, StackSets |
+| `lab-infra-org` | Organization, OUs, accounts, SCPs, budget | Terraform |
+| `lab-github` | Repositories, rulesets, environments | Terraform (GitHub provider) |
+| `lab-infra-platform` | Per-environment `base`, `cluster`, `edge` stacks and their pipelines | Terraform, GitHub Actions |
+| `lab-gitops` | Helm charts and Argo CD app-of-apps for dev, test, prod; installs the CloudNativePG operator and defines the `lab-postgres` cluster | Helm, Argo CD |
+| `lab-backend` | Visit counting and history API | Python 3.12, FastAPI, Valkey, Postgres |
+| `lab-web` | Static dashboard | HTML, CSS, ES modules, nginx |
+| `lab-cluster` | Image of the daily aggregator (Valkey to Postgres); the CronJob and database are deployed from `lab-gitops` | Python |
+| `lab-github-workflows` | Reusable CI, release and destroy workflows | GitHub Actions |
+| `lab-docs` | This documentation | Markdown, Mermaid |
+
+## Accounts and OUs
+
+Defined in `lab-infra-org`, one account per environment.
+
+```mermaid
+flowchart TD
+  R[Root + 4 SCPs] --> S[OU Security]
+  R --> I[OU Infrastructure]
+  R --> W[OU Workloads]
+  S --> A1[lab-log-archive]
+  I --> A2[lab-shared-services]
+  W --> A3[lab-dev]
+  W --> A4[lab-test]
+  W --> A5[lab-prod]
+```
+
+Primary region `eu-central-1`. SCP-allowed regions: `eu-central-1`, `eu-west-1`, `us-east-1`. SCPs do not apply to the management account.
+
+## Scope
+
+| Item | State |
+|---|---|
+| Terraform: org, GitHub, `base`, `cluster`, `edge` stacks | Complete. |
+| CloudFormation seed and StackSets | Complete. |
+| Helm charts and Argo CD app-of-apps | Complete. |
+| Backend, web, aggregator code | Complete, with unit and integration tests. |
+| Reusable workflows (CI, release, apply, destroy) | Complete. |
+| Placeholders to fill | `OWNER`, `ACCOUNT_ID`, `vpc-TODO`, `sg-TODO`, repository variables |
+| SonarCloud scan, post-deploy smoke test | Not written |
+| Organization CloudTrail, GuardDuty, Security Hub, Config | Not implemented (SCP `lab-protect-cloudtrail` exists, but no trail) |
+| Custom domain, TLS to the origin | Not built. CloudFront to ALB is plain HTTP. |
+| Disaster recovery | Not built. `edge` accepts a DR ALB (`dr_alb_dns_name`); no DR cluster, replica database or failover drill exists. |
+
+## Quick start (order of operations)
+
+Details are in each repository README and in the runbooks.
+
+1. `lab-bootstrap` stage 1: CloudFormation stack in the management account (state bucket, OIDC, org roles).
+2. `lab-infra-org`: create and import the organization, then apply OUs, accounts, SCPs, budget.
+3. `lab-github`: apply with a personal token to create rulesets and environments.
+4. `lab-bootstrap` stage 2: StackSets for CI roles in workload accounts and the platform state bucket.
+5. Fill placeholders and set repository variables in `lab-infra-platform` (`DEV_ACCOUNT_ID`, `PLATFORM_STATE_BUCKET`, ...).
+6. `lab-infra-platform`: apply `base`, then `cluster`.
+7. Wait for Argo CD to sync `lab-gitops` and for the ALB `lab-<env>-alb` to exist.
+8. `lab-infra-platform`: apply `edge`. Open the CloudFront URL.
+9. Teardown: run the destroy workflow (teardown script and `edge`), then destroy `cluster` locally. `base` stays.
+
+## Cost
+
+Budget about 100 USD per month, alerts at 50, 80 and 100 percent. Estimated about 0.40 USD per hour per running environment
+(EKS control plane 0.10, 2x t3.large, NAT, ALB, cache). This is an estimate.
+
+## Documents
+
+| Document | Content |
+|---|---|
+| `docs/architecture.md` | Architecture and diagrams |
+| `docs/cost.md` | Cost estimate and controls |
+| `docs/security.md` | Security controls and gaps |
+| `docs/adr/` | Architecture decision records |
+| `docs/runbooks/` | Operational runbooks |

@@ -1,0 +1,23 @@
+# 06 Troubleshooting
+
+Commands assume `kubectl` points at `lab-<env>` (see [02](02-deploy-environment.md), step 8). Namespace `lab` holds the apps.
+
+| Symptom | Likely cause | Check | Fix |
+|---|---|---|---|
+| `edge` apply fails on `data.aws_lb` | ALB `lab-<env>-alb` does not exist: apps not synced, or the Ingress has no valid security group | `kubectl -n argocd get applications`; `kubectl -n lab get ingress` | Finish gitops values ([02](02-deploy-environment.md) step 12), wait for sync, rerun `edge` |
+| `edge` apply fails on `data.aws_lb_target_group` | Service tags `lab-service` not on target groups yet | `aws elbv2 describe-tags --resource-arns <tg-arn>` | Wait until both Services are synced and targets registered, rerun |
+| `curl` to the ALB DNS name returns 403 | By design: the regional WAF blocks requests without `X-Origin-Verify`, and the security group admits only CloudFront | Same URL through `https://<domain>/` works | Test through CloudFront only |
+| Applications show `Progressing`, `Degraded` or `SyncFailed` after the cluster is created | Sync waves gate through the Application health check; retries (10 attempts, about 20 minutes) cover CRDs, webhooks and the `lab` namespace that are not ready yet | `kubectl -n argocd get applications` | Wait. After retries are used up: `kubectl -n argocd patch application <name> --type merge -p '{"operation":{"sync":{}}}'` |
+| Pods `ImagePullBackOff`, image tag `0.0.0` or repository `ACCOUNT_ID...` | No image released yet, or placeholder not replaced | `kubectl -n lab describe pod <pod>` | Replace `ACCOUNT_ID`, release an image ([03](03-release-and-promote.md)) |
+| Ingress has no address | `albSecurityGroupId` is `sg-TODO`, or the load balancer controller is not ready | `kubectl -n lab describe ingress`; `kubectl -n kube-system logs deploy/aws-load-balancer-controller` | Set the id from `terraform output gitops_values`, merge |
+| CloudFront returns 502 or 504, targets unhealthy | NetworkPolicy admits only `vpcCidr`; a wrong value blocks the ALB | `aws elbv2 describe-target-health --target-group-arn <tg-arn>` | Set `vpcCidr` equal to the stack `vpc_cidr` (default `10.0.0.0/16`) in `backend.yaml`, `web.yaml`, `cluster.yaml` |
+| `/api/visit` returns 503, `counters_available: false` | Valkey unreachable or AUTH token rejected | `kubectl -n lab logs deploy/lab-backend`; `kubectl -n lab get externalsecret lab-valkey` | See next row; page still shows history |
+| ExternalSecret `lab-valkey` not `SecretSynced` | SSM parameters `/lab/<env>/valkey/endpoint` and `/auth-token` missing, or the token changed (the secret refreshes hourly) | `aws ssm get-parameter --name /lab/<env>/valkey/auth-token --with-decryption`; `kubectl -n lab describe externalsecret lab-valkey` | `kubectl -n lab annotate externalsecret lab-valkey force-sync=$(date +%s) --overwrite`, then `kubectl -n lab rollout restart deployment/lab-backend` |
+| Counters reset to zero after a cache loss | `visits:total` is not snapshotted; `uniques:total` is restored at backend start | `kubectl -n lab logs deploy/lab-backend \| grep restored` | Expected. Restart backend pods if Valkey was replaced while they ran |
+| Charts show no history | Aggregator runs at 00:05 UTC; first row appears after the first full day; Postgres may be down | `kubectl -n lab get cronjob lab-aggregator`; `kubectl -n lab get cluster lab-postgres` | `kubectl -n lab create job --from=cronjob/lab-aggregator manual-1` |
+| Postgres Cluster not healthy | Wrong `kubernetesServiceIp` in `cluster.yaml`, or "Expected empty archive" after a rebuild | `kubectl -n lab describe cluster lab-postgres` | Set `<ip>/32` from `kubectl get svc kubernetes`; for the archive error see [05](05-database-restore.md) |
+| Platform cards show "No data yet" or are dimmed | Lambda not writing `metrics/metrics.json` | `aws logs tail /aws/lambda/lab-<env>-metrics-collector --since 10m`; `aws s3 ls s3://lab-<env>-assets/metrics/` | Apply `edge` after the cluster; the Lambda reads cache id `lab-<env>-valkey-001` |
+| `kubectl` times out | Your IP is not in `api_allowed_cidrs` | `curl -s https://checkip.amazonaws.com` | Update `terraform.tfvars`, apply `cluster` |
+| Workflow fails "ACCOUNT_ID repository variable is missing" | Variable unset or not 12 digits | `gh variable list --repo <owner>/lab-infra-platform` | Set it ([01](01-bootstrap-from-zero.md) step 16) |
+| Release fails at Trivy or ECR scan | CRITICAL finding in the image | Job log | Update the base image or dependency, push again |
+| Destroy times out or VPC will not delete | ALB or EBS volumes left behind | `scripts/teardown.sh <env> eu-central-1` output | Delete the listed resources, rerun ([04](04-destroy-and-cost-control.md)) |
