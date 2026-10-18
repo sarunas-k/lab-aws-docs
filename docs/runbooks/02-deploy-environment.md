@@ -4,7 +4,7 @@ Order: `base`, `cluster`, Argo CD bootstrap and sync, gitops values, `edge`. Rep
 `base`, `cluster` and `edge` each run through `apply.yml` or locally. The `cluster` stack is AWS-only; Argo CD is installed afterwards by `scripts/bootstrap-argocd.sh`. Repository variables used by `apply.yml`: `ALERT_EMAIL` (`base`), `KUBERNETES_VERSION`, `API_ALLOWED_CIDRS` (JSON list, for example `["203.0.113.10/32"]`) and `ADMIN_ROLE_ARNS` (JSON list, may be `[]`) for `cluster`.
 Needs: runbook 01 done, Terraform 1.10 or later, `kubectl`, `helm`, admin credentials for the environment account (`export AWS_PROFILE=<profile>`).
 
-1. In `lab-gitops`, replace `OWNER` and `ACCOUNT_ID`, then merge by pull request: `grep -n "OWNER\|ACCOUNT_ID" envs/<env>/values/*.yaml`
+1. In `lab-gitops`, replace `ACCOUNT_ID`, then merge by pull request: `grep -n "ACCOUNT_ID" envs/<env>/values/*.yaml`
 2. In `lab-infra-platform/envs/<env>/base`: `cp terraform.tfvars.example terraform.tfvars` and set `alert_emails`.
 3. Create ECR, buckets and SNS topics: `terraform init -backend-config="bucket=lab-tfstate-platform-<shared-id>" && terraform apply`
 4. Confirm the SNS subscription emails in `eu-central-1` and `us-east-1`. Alarms are silent until you do.

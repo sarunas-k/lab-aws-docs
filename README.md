@@ -57,7 +57,7 @@ Primary region `eu-central-1`. SCP-allowed regions: `eu-central-1`, `eu-west-1`,
 | Helm charts and Argo CD app-of-apps | Complete. |
 | Backend, web, aggregator code | Complete, with unit and integration tests. |
 | Reusable workflows (CI, release, apply) and the cost-guard workflow | Complete. |
-| Placeholders to fill | `OWNER`, `ACCOUNT_ID`, `vpc-TODO`, `sg-TODO`, repository variables |
+| Placeholders to fill | `ACCOUNT_ID`, `vpc-TODO`, `sg-TODO`, repository variables |
 | SonarCloud scan, post-deploy smoke test | Not written |
 | Organization CloudTrail, GuardDuty, Security Hub, Config | Not implemented (SCP `lab-protect-cloudtrail` exists, but no trail) |
 | Custom domain, TLS to the origin | Not built. CloudFront to ALB is plain HTTP. |

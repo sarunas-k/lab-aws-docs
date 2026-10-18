@@ -15,4 +15,4 @@ Order for a new setup: 01, then 02 (dev first), then 03. Use 04 when finished. U
 
 - `<env>` is `dev`, `test` or `prod`. Region is `eu-central-1` unless stated.
 - Commands run from the repository named in the step. Use credentials for the account named in the step.
-- Placeholders to replace before first use: `OWNER` (GitHub user or organization), `ACCOUNT_ID`, `vpc-TODO`, `sg-TODO`.
+- Placeholders to replace before first use: `ACCOUNT_ID`, `vpc-TODO`, `sg-TODO`.

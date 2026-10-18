@@ -72,7 +72,7 @@ Reusable workflows live in `lab-github-workflows` and are called by `lab-backend
 - No path writes to a cluster or to `main` directly. The bot only opens a PR that changes the one `tag:` line in `envs/<env>/values/`.
 - Gates: Trivy fails on CRITICAL before push. The ECR scan is checked after push. Branch rulesets (documented in [repository settings](repository-settings.md)) require a PR, one approval and status checks.
 - ECR tags are immutable. Images are signed with keyless cosign. Nothing in the cluster verifies signatures.
-- Not written: SonarCloud scan and the post-deploy smoke test. Placeholders remain: `OWNER`, `ACCOUNT_ID`, `sg-TODO`, `vpc-TODO` and the repository variables.
+- Not written: SonarCloud scan and the post-deploy smoke test. Placeholders remain: `ACCOUNT_ID`, `sg-TODO`, `vpc-TODO` and the repository variables.
 
 ## 4. Terraform stacks and order
 

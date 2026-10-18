@@ -16,7 +16,7 @@ Status: Accepted.
 - The prod image is rebuilt, not the bytes tested in test. Digests can differ if base images move.
 - One build per environment per release.
 - Gap: signatures are created but nothing in the cluster verifies them.
-- Gap: SonarCloud scan and post-deploy smoke test are not written. `OWNER` and `ACCOUNT_ID` are placeholders.
+- Gap: SonarCloud scan and post-deploy smoke test are not written. `ACCOUNT_ID` is a placeholder.
 
 ## Alternatives considered
 - Build once and promote the digest by ECR replication: stronger provenance, more IAM and setup.

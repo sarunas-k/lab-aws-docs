@@ -4,7 +4,7 @@ Result: organization, five accounts, CI roles, state buckets, and the GitHub set
 Needs: AWS CLI v2, Terraform 1.10 or later, `gh`, admin login to the management account, MFA on root. Replace `<...>` values.
 
 1. Check the account plan in the Billing console: it must allow AWS Organizations and creating member accounts.
-2. Replace `OWNER` with your GitHub user or organization: `grep -rln OWNER --include='*.yml' --include='*.tf' --exclude-dir=.git --exclude-dir=.terraform --exclude-dir=lab-docs .`
+2. Check that the workflow files reference your GitHub account: `grep -rn "uses: .*lab-github-workflows" --include='*.yml' .` (fork the project: change the account name in those lines).
 3. Stage 1, in `lab-bootstrap`. Creates bucket `lab-tfstate-org-<mgmt-id>` and roles `lab-github-org-plan`, `lab-github-org-apply`. Add `CreateOidcProvider=false` if the provider exists.
    ```
    aws cloudformation deploy --stack-name lab-bootstrap-stage1 --template-file stage1/seed.yaml \
